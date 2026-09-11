@@ -52,7 +52,7 @@ export default async function Home() {
             Ask anything. Anonymously.
           </h2>
           <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
-            No login. No identity. Just questions, answered by admins.
+            No login. No identity. Just your questions, answered by admins.
           </p>
         </section>
 
