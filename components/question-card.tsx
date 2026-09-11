@@ -1,35 +1,49 @@
-'use client'
-import { motion } from 'framer-motion'
-import { MessageCircle, CheckCircle2, Clock, Sparkles, User } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+"use client";
+import { motion } from "framer-motion";
+import {
+  MessageCircle,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  User,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export interface QuestionWithAnswer {
-  id: string
-  content: string
-  created_at: string
-  is_answered: boolean
-  device_id: string
-  is_hidden?: boolean
-  answers?: { id: string; content: string; created_at: string; admin_name: string }[]
+  id: string;
+  content: string;
+  created_at: string;
+  is_answered: boolean;
+  device_id: string;
+  is_hidden?: boolean;
+  answers?: {
+    id: string;
+    content: string;
+    created_at: string;
+    admin_name: string;
+  }[];
 }
 
 export function timeAgo(d: string) {
-  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000)
-  if (s < 60) return `${s}s ago`
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
-  return `${Math.floor(s / 86400)}d ago`
+  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
 export function QuestionCard({
-  q, isMine, onOpen,
+  q,
+  isMine,
+  onOpen,
 }: {
-  q: QuestionWithAnswer
-  isMine?: boolean
-  onOpen: (q: QuestionWithAnswer) => void
+  q: QuestionWithAnswer;
+  isMine?: boolean;
+  onOpen: (q: QuestionWithAnswer) => void;
 }) {
-  const answer = q.answers?.[0]
-  const preview = q.content.length > 160 ? q.content.slice(0, 160) + '…' : q.content
+  const answer = q.answers?.[0];
+  const preview =
+    q.content.length > 160 ? q.content.slice(0, 160) + "…" : q.content;
 
   return (
     <motion.button
@@ -54,7 +68,10 @@ export function QuestionCard({
           <Clock className="h-3 w-3" /> {timeAgo(q.created_at)}
         </span>
         {isMine && (
-          <Badge variant="outline" className="text-[10px] border-primary/40 text-primary ml-auto">
+          <Badge
+            variant="outline"
+            className="text-[10px] border-primary/40 text-primary ml-auto"
+          >
             You
           </Badge>
         )}
@@ -70,7 +87,10 @@ export function QuestionCard({
             <CheckCircle2 className="h-3 w-3 mr-1" /> Answered
           </Badge>
         ) : (
-          <Badge variant="outline" className="text-muted-foreground border-border">
+          <Badge
+            variant="outline"
+            className="text-muted-foreground border-border"
+          >
             Awaiting answer
           </Badge>
         )}
@@ -82,5 +102,5 @@ export function QuestionCard({
         )}
       </div>
     </motion.button>
-  )
+  );
 }

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { QuestionWithAnswer } from './question-card'
 import { timeAgo } from './question-card'
+import { ShareButton } from './share/share-button'
 
 export function QuestionModal({
   q, onClose, isMine,
@@ -14,7 +15,6 @@ export function QuestionModal({
   onClose: () => void
   isMine?: boolean
 }) {
-  // Lock scroll + Escape to close
   useEffect(() => {
     if (!q) return
     const prev = document.body.style.overflow
@@ -26,6 +26,12 @@ export function QuestionModal({
       window.removeEventListener('keydown', onKey)
     }
   }, [q, onClose])
+
+  const siteUrl =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  const siteName = process.env.NEXT_PUBLIC_APP_NAME ?? 'Whisper'
 
   return (
     <AnimatePresence>
@@ -46,9 +52,8 @@ export function QuestionModal({
             onClick={e => e.stopPropagation()}
             className="relative w-full h-full overflow-y-auto bg-background"
           >
-            {/* Close */}
             <div className="sticky top-0 z-10 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-              <div className="container mx-auto max-w-2xl px-4 py-3 flex items-center justify-between">
+              <div className="container mx-auto max-w-2xl px-4 py-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <MessageCircle className="h-4 w-4" />
                   <span className="font-medium text-foreground/80">Anonymous question</span>
@@ -58,14 +63,18 @@ export function QuestionModal({
                     </Badge>
                   )}
                 </div>
-                <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-                  <X className="h-5 w-5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {q.answers?.[0] && (
+                    <ShareButton q={q} siteUrl={siteUrl} siteName={siteName} question={q} />
+                  )}
+                  <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             </div>
 
             <div className="container mx-auto max-w-2xl px-4 py-10 sm:py-16">
-              {/* Question */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" /> {timeAgo(q.created_at)}
@@ -85,7 +94,6 @@ export function QuestionModal({
                 {q.content}
               </h1>
 
-              {/* Answer */}
               <div className="mt-10">
                 {q.answers?.[0] ? (
                   <motion.div
@@ -99,9 +107,7 @@ export function QuestionModal({
                         <User className="h-4 w-4 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold">
-                          {q.answers[0].admin_name}
-                        </p>
+                        <p className="text-sm font-semibold">{q.answers[0].admin_name}</p>
                         <p className="text-[11px] text-muted-foreground">
                           Admin · {timeAgo(q.answers[0].created_at)}
                         </p>
@@ -112,6 +118,14 @@ export function QuestionModal({
                       <p className="text-[15px] sm:text-base leading-relaxed text-foreground/95 whitespace-pre-wrap break-words">
                         {q.answers[0].content}
                       </p>
+                    </div>
+
+                    {/* Inline share prompt under the answer */}
+                    <div className="border-t border-border/60 px-5 sm:px-6 py-4 flex items-center justify-between gap-3 bg-background/40">
+                      <p className="text-xs text-muted-foreground">
+                        Helpful? Share this answer with someone who needs it.
+                      </p>
+                      <ShareButton question={q} siteUrl={siteUrl} siteName={siteName} />
                     </div>
                   </motion.div>
                 ) : (
