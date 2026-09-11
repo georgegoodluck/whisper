@@ -65,7 +65,7 @@ export function QuestionModal({
                 </div>
                 <div className="flex items-center gap-2">
                   {q.answers?.[0] && (
-                    <ShareButton q={q} siteUrl={siteUrl} siteName={siteName} question={q} />
+                    <ShareButton question={q} siteUrl={siteUrl} siteName={siteName} />
                   )}
                   <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
                     <X className="h-5 w-5" />
@@ -120,7 +120,6 @@ export function QuestionModal({
                       </p>
                     </div>
 
-                    {/* Inline share prompt under the answer */}
                     <div className="border-t border-border/60 px-5 sm:px-6 py-4 flex items-center justify-between gap-3 bg-background/40">
                       <p className="text-xs text-muted-foreground">
                         Helpful? Share this answer with someone who needs it.

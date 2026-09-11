@@ -6,12 +6,6 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ShareCard } from './share-card'
 import type { QuestionWithAnswer } from '@/components/question-card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 
 export function ShareButton({
   question, siteUrl, siteName,
@@ -24,9 +18,10 @@ export function ShareButton({
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  const disabled = !question.answers?.[0]
+
   async function renderPng(): Promise<Blob> {
     if (!cardRef.current) throw new Error('Card not ready')
-    // Small delay to ensure QR is rendered
     await new Promise(r => setTimeout(r, 120))
     const dataUrl = await toPng(cardRef.current, {
       cacheBust: true,
@@ -38,50 +33,18 @@ export function ShareButton({
   }
 
   function getCaption() {
-    const q = question.content.length > 140 ? question.content.slice(0, 140) + '…' : question.content
+    const q = question.content.length > 140
+      ? question.content.slice(0, 140) + '…'
+      : question.content
     const a = question.answers?.[0]
     const ansPreview = a
-      ? a.content.length > 200
-        ? a.content.slice(0, 200) + '…'
-        : a.content
+      ? (a.content.length > 200 ? a.content.slice(0, 200) + '…' : a.content)
       : ''
     return [
       `❓ "${q}"`,
       a ? `\n💬 ${a.admin_name}:\n${ansPreview}` : '',
       `\n— Get your anonymous question answered at ${siteUrl}`,
     ].filter(Boolean).join('\n')
-  }
-
-  async function shareNative() {
-    try {
-      setBusy(true)
-      const blob = await renderPng()
-      const file = new File([blob], 'whisper-answer.png', { type: 'image/png' })
-      const shareData: ShareData = {
-        files: [file],
-        title: `${siteName} — Answer`,
-        text: getCaption(),
-      }
-
-      const canShareFiles =
-        typeof navigator !== 'undefined' &&
-        'canShare' in navigator &&
-        (navigator as any).canShare({ files: [file] })
-
-      if (canShareFiles && 'share' in navigator) {
-        await navigator.share(shareData)
-        toast.success('Shared!')
-      } else {
-        // Fallback: download + copy
-        downloadBlob(blob)
-        await copyCaption()
-        toast.success('Image downloaded. Caption copied — paste both into WhatsApp.')
-      }
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') toast.error(e.message ?? 'Share failed')
-    } finally {
-      setBusy(false)
-    }
   }
 
   function downloadBlob(blob: Blob) {
@@ -93,6 +56,41 @@ export function ShareButton({
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
+  }
+
+  async function shareNative() {
+    try {
+      setBusy(true)
+      const blob = await renderPng()
+      const file = new File([blob], 'whisper-answer.png', { type: 'image/png' })
+
+      const canShareFiles =
+        typeof navigator !== 'undefined' &&
+        'canShare' in navigator &&
+        (navigator as any).canShare({ files: [file] }) &&
+        'share' in navigator
+
+      if (canShareFiles) {
+        await (navigator as any).share({
+          files: [file],
+          title: `${siteName} — Answer`,
+          text: getCaption(),
+        })
+        toast.success('Shared!')
+      } else {
+        downloadBlob(blob)
+        try {
+          await navigator.clipboard.writeText(getCaption())
+          toast.success('Image downloaded. Caption copied.')
+        } catch {
+          toast.success('Image downloaded.')
+        }
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') toast.error(e.message ?? 'Share failed')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function download() {
@@ -119,39 +117,39 @@ export function ShareButton({
     }
   }
 
-  const disabled = !question.answers?.[0]
-
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={disabled || busy}
-            className="border-primary/40 text-primary hover:bg-primary/10"
-          >
-            {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />}
-            Share
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onClick={shareNative} className="cursor-pointer">
-            <Share2 className="h-4 w-4 mr-2" />
-            Share as image (WhatsApp)
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={download} className="cursor-pointer">
-            <Download className="h-4 w-4 mr-2" />
-            Download image
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={copyCaption} className="cursor-pointer">
-            {copied ? <Check className="h-4 w-4 mr-2 text-emerald-500" /> : <Copy className="h-4 w-4 mr-2" />}
-            Copy caption only
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled || busy}
+          onClick={shareNative}
+          className="border-primary/40 text-primary hover:bg-primary/10"
+        >
+          {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />}
+          Share
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={disabled || busy}
+          onClick={download}
+          aria-label="Download image"
+        >
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={disabled}
+          onClick={copyCaption}
+          aria-label="Copy caption"
+        >
+          {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
 
-      {/* Off-screen render target */}
       <div
         aria-hidden
         style={{
