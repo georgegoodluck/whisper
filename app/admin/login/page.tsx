@@ -1,9 +1,9 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Loader2, Shield } from 'lucide-react'
+import { Loader2, Shield, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
@@ -13,14 +13,39 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const params = useSearchParams()
+
+  useEffect(() => {
+    const reason = params.get('reason')
+    if (reason === 'not-admin') toast.error('Your account is not an admin.')
+    if (reason === 'no-session') toast.error('Please sign in again.')
+    if (reason === 'db-error') toast.error('Database error. Check server logs.')
+  }, [params])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setLoading(false)
+      return toast.error(error.message)
+    }
+
+    // Verify admin BEFORE redirecting — avoids the loop
+    const { data: isAdmin } = await supabase
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', data.user.id)
+      .maybeSingle()
+
     setLoading(false)
-    if (error) return toast.error(error.message)
+
+    if (!isAdmin) {
+      await supabase.auth.signOut()
+      return toast.error('This account is not an admin. Contact the site owner.')
+    }
+
     toast.success('Welcome back')
     router.push('/admin/dashboard')
     router.refresh()
@@ -49,6 +74,7 @@ export default function AdminLogin() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              autoComplete="email"
             />
             <Input
               type="password"
@@ -56,6 +82,7 @@ export default function AdminLogin() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
             />
             <Button
               type="submit"
@@ -66,6 +93,12 @@ export default function AdminLogin() {
               Sign in
             </Button>
           </form>
+          <p className="text-xs text-muted-foreground mt-4 text-center">
+            Need an account?{' '}
+            <Link href="/admin/signup" className="text-primary hover:underline">
+              Create one
+            </Link>
+          </p>
         </div>
       </div>
     </div>

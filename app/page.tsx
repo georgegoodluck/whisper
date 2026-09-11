@@ -4,7 +4,8 @@ import { AskDialog } from '@/components/ask-dialog'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { MessageCircleQuestion, Shield } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,14 +16,14 @@ export default async function Home() {
     .select('*, answers(*)')
     .eq('is_hidden', false)
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(200)
 
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'Whisper'
 
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-3.5 flex items-center justify-between max-w-3xl">
+        <div className="container mx-auto px-4 py-3.5 flex items-center justify-between max-w-6xl">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-500 flex items-center justify-center shadow-lg shadow-primary/20">
               <MessageCircleQuestion className="h-5 w-5 text-white" />
@@ -34,14 +35,18 @@ export default async function Home() {
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Button asChild variant="ghost" size="icon" aria-label="Admin">
-              <Link href="/admin/login"><Shield className="h-5 w-5" /></Link>
-            </Button>
+            <Link
+              href="/admin/login"
+              aria-label="Admin"
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }))}
+            >
+              <Shield className="h-5 w-5" />
+            </Link>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 sm:py-12 max-w-3xl">
+      <main className="container mx-auto px-4 py-8 sm:py-12 max-w-6xl">
         <section className="text-center mb-8">
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
             Ask anything. Anonymously.
@@ -51,7 +56,9 @@ export default async function Home() {
           </p>
         </section>
 
-        <AskDialog />
+        <div className="max-w-2xl mx-auto">
+          <AskDialog />
+        </div>
 
         <div className="mt-10">
           <Feed initial={(questions ?? []) as any} />

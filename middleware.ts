@@ -11,9 +11,7 @@ export async function middleware(request: NextRequest) {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
@@ -25,12 +23,23 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (request.nextUrl.pathname.startsWith('/admin/dashboard') && !user) {
-    return NextResponse.redirect(new URL('/admin/login', request.url))
+  const path = request.nextUrl.pathname
+
+  // Protect /admin/dashboard only
+  if (path.startsWith('/admin/dashboard') && !user) {
+    const url = new URL('/admin/login', request.url)
+    url.searchParams.set('next', path)
+    url.searchParams.set('reason', 'no-session')
+    return NextResponse.redirect(url)
   }
 
-  if (request.nextUrl.pathname === '/admin/login' && user) {
-    return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+  // If already logged in, don't show login/signup
+  if ((path === '/admin/login' || path === '/admin/signup') && user) {
+    // Only redirect if not already coming FROM the dashboard (avoid loops)
+    const from = request.nextUrl.searchParams.get('from')
+    if (from !== 'dashboard') {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+    }
   }
 
   return response

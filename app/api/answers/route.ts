@@ -13,13 +13,16 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = await createAdminClient()
-  const { data: isAdmin } = await admin
-    .from('admins')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .maybeSingle()
 
+  // Verify caller is whitelisted admin
+  const { data: isAdmin } = await admin
+    .from('admins').select('user_id').eq('user_id', user.id).maybeSingle()
   if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Fetch display name (falls back to email prefix if missing)
+  const { data: profile } = await admin
+    .from('admin_profiles').select('display_name').eq('user_id', user.id).maybeSingle()
+  const adminName = profile?.display_name ?? user.email?.split('@')[0] ?? 'Admin'
 
   const json = await req.json().catch(() => null)
   const parsed = BodySchema.safeParse(json)
@@ -28,7 +31,12 @@ export async function POST(req: Request) {
   const { questionId, content } = parsed.data
   const { data, error } = await supabase
     .from('answers')
-    .insert({ question_id: questionId, content, admin_id: user.id })
+    .insert({
+      question_id: questionId,
+      content,
+      admin_id: user.id,
+      admin_name: adminName,
+    })
     .select()
     .single()
 
