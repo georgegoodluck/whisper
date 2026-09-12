@@ -42,13 +42,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: 'website',
-      images: [{ url: '/og.png', width: 1200, height: 630, alt: space.name }],
+      images: [{ url: '/og.svg', width: 1200, height: 630, alt: space.name }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: ['/og.png'],
+      images: ['/og.svg'],
     },
     alternates: {
       canonical: `/s/${space.invite_code}`,

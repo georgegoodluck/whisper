@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     siteName: appName,
     images: [
       {
-        url: "/og.png",
+        url: "/og.svg",
         width: 1200,
         height: 630,
         alt: `${appName} — Anonymous Q&A`,
@@ -85,7 +85,7 @@ export const metadata: Metadata = {
     title: `${appName} — Anonymous Q&A for communities`,
     description:
       "Ask anything anonymously. Admins answer, answers are shareable.",
-    images: ["/og.png"],
+    images: ["/og.svg"],
   },
 
   // Robots
