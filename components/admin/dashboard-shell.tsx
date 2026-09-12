@@ -4,15 +4,13 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import {
-  MessageCircleQuestion, LogOut, Plus,
-} from 'lucide-react'
+import { LogOut, Plus, MessageCircleQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SpaceWorkspace } from './space-workspace'
-import { Logo } from '../logo'
+import { Logo } from '@/components/logo'
 
 type Membership = {
   space_id: string
@@ -36,6 +34,7 @@ export function DashboardShell({
 }) {
   const [memberships, setMemberships] = useState<Membership[]>(initial)
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(initial[0]?.space_id ?? null)
+  const [tab, setTab] = useState<'spaces' | 'create'>('spaces')
   const supabase = createClient()
   const router = useRouter()
 
@@ -45,12 +44,23 @@ export function DashboardShell({
     router.refresh()
   }
 
+  function handleSpaceDeleted(spaceId: string) {
+    setMemberships(prev => {
+      const next = prev.filter(m => m.space_id !== spaceId)
+      // If the deleted space was active, switch to the first remaining one (or null)
+      setActiveSpaceId(prevActive =>
+        prevActive === spaceId ? (next[0]?.space_id ?? null) : prevActive
+      )
+      return next
+    })
+  }
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-3.5 flex items-center justify-between max-w-6xl">
           <Link href="/" className="flex items-center gap-3">
-           <Logo size={36} />
+            <Logo size={36} />
             <div>
               <h1 className="text-sm font-semibold">Dashboard</h1>
               <p className="text-[11px] text-muted-foreground -mt-0.5">{user.email}</p>
@@ -63,7 +73,7 @@ export function DashboardShell({
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-6xl">
-        <Tabs defaultValue="spaces">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'spaces' | 'create')}>
           <TabsList className="bg-secondary/50 border border-border/60">
             <TabsTrigger value="spaces">
               My spaces
@@ -71,7 +81,9 @@ export function DashboardShell({
                 <span className="ml-2 text-xs text-muted-foreground">{memberships.length}</span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="create">Create space</TabsTrigger>
+            <TabsTrigger value="create">
+              <Plus className="h-3.5 w-3.5 mr-1" /> Create space
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="spaces" className="mt-6">
@@ -81,9 +93,16 @@ export function DashboardShell({
                 <p className="text-sm text-muted-foreground mb-4">
                   You&apos;re not part of any space yet.
                 </p>
+                <Button
+                  onClick={() => setTab('create')}
+                  className="bg-gradient-to-r from-primary to-fuchsia-500"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Create your first space
+                </Button>
               </div>
             ) : (
               <div className="space-y-6">
+                {/* Space selector */}
                 <div className="flex gap-2 flex-wrap">
                   {memberships.map(m => (
                     <button
@@ -103,10 +122,7 @@ export function DashboardShell({
                     </button>
                   ))}
                   <button
-                    onClick={() => {
-                      const tab = document.querySelector('[value="create"]') as HTMLElement | null
-                      tab?.click()
-                    }}
+                    onClick={() => setTab('create')}
                     className="rounded-lg border border-dashed border-border/60 px-4 py-2 text-sm text-muted-foreground hover:border-primary/60 hover:text-primary"
                   >
                     <Plus className="h-3.5 w-3.5 inline mr-1" /> New
@@ -116,7 +132,13 @@ export function DashboardShell({
                 {activeSpaceId && (() => {
                   const m = memberships.find(x => x.space_id === activeSpaceId)
                   if (!m) return null
-                  return <SpaceWorkspace key={m.space_id} membership={m} />
+                  return (
+                    <SpaceWorkspace
+                      key={m.space_id}
+                      membership={m}
+                      onDeleted={() => handleSpaceDeleted(m.space_id)}
+                    />
+                  )
                 })()}
               </div>
             )}
@@ -128,8 +150,10 @@ export function DashboardShell({
               onCreated={(m) => {
                 setMemberships(prev => [...prev, m])
                 setActiveSpaceId(m.space_id)
+                setTab('spaces')           // ← auto-return to My spaces
                 router.refresh()
               }}
+              onCancel={() => setTab('spaces')}
             />
           </TabsContent>
         </Tabs>
@@ -139,10 +163,11 @@ export function DashboardShell({
 }
 
 function CreateSpaceForm({
-  defaultDisplayName, onCreated,
+  defaultDisplayName, onCreated, onCancel,
 }: {
   defaultDisplayName: string
   onCreated: (m: Membership) => void
+  onCancel: () => void
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -190,6 +215,7 @@ function CreateSpaceForm({
             placeholder="e.g. Tech Careers Q&A"
             required
             maxLength={60}
+            autoFocus
           />
         </div>
         <div>
@@ -213,14 +239,19 @@ function CreateSpaceForm({
             maxLength={40}
           />
         </div>
-        <Button
-          type="submit"
-          disabled={busy || !name.trim() || !displayName.trim()}
-          className="w-full bg-gradient-to-r from-primary to-fuchsia-500"
-        >
-          {busy && <span className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />}
-          Create space
-        </Button>
+        <div className="flex gap-2 pt-2">
+          <Button
+            type="submit"
+            disabled={busy || !name.trim() || !displayName.trim()}
+            className="bg-gradient-to-r from-primary to-fuchsia-500 flex-1"
+          >
+            {busy && <span className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />}
+            Create space
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+        </div>
       </form>
     </div>
   )
