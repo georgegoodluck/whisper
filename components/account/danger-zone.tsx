@@ -110,7 +110,7 @@ export function DangerZone({ ownedSpaces }: { ownedSpaces: OwnedSpace[] }) {
                   ))}
                 </ul>
                 <p className="text-amber-200/80 mt-2">
-                  Delete or hand off these spaces from your dashboard first.
+                  Go to <strong>My spaces</strong> → select the space → <strong>Team</strong> tab to transfer ownership to an admin, or <strong>Delete</strong> the space entirely.
                 </p>
               </div>
             )}
