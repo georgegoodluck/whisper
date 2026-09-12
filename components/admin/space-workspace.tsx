@@ -557,6 +557,8 @@ function TeamPanel({ spaceId, ownerId }: { spaceId: string; ownerId: string }) {
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [busy, setBusy] = useState(false)
+  const [transferTarget, setTransferTarget] = useState<{ user_id: string; display_name: string } | null>(null)
+  const [transferring, setTransferring] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
   async function load() {
@@ -602,6 +604,30 @@ function TeamPanel({ spaceId, ownerId }: { spaceId: string; ownerId: string }) {
     toast.success('Removed')
     load()
   }
+
+  async function transfer() {
+    if (!transferTarget) return
+    setTransferring(true)
+    try {
+      const res = await fetch('/api/members', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spaceId, newOwnerId: transferTarget.user_id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success(`${transferTarget.display_name} is now the overseer`)
+      setTransferTarget(null)
+      // Force a full refresh to re-fetch memberships + roles
+      window.location.reload()
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setTransferring(false)
+    }
+  }
+
+  const otherMembers = members.filter(m => m.user_id !== ownerId)
 
   return (
     <div className="space-y-4">
@@ -655,14 +681,76 @@ function TeamPanel({ spaceId, ownerId }: { spaceId: string; ownerId: string }) {
                 </div>
               </div>
               {m.user_id !== ownerId && (
-                <Button variant="ghost" size="icon" onClick={() => remove(m.user_id)} aria-label="Remove">
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTransferTarget({ user_id: m.user_id, display_name: m.display_name })}
+                    className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                    title="Make this member the overseer"
+                  >
+                    👑 Make overseer
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => remove(m.user_id)} aria-label="Remove">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* Transfer confirmation modal */}
+      {transferTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+          onClick={() => !transferring && setTransferTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-card p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                <span className="text-xl">👑</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Transfer ownership?</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <span className="font-medium text-foreground">{transferTarget.display_name}</span> will
+                  become the new overseer of this space. You&apos;ll be demoted to a regular admin.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 mb-5 text-xs text-amber-200/80">
+              You can be removed by the new overseer afterwards. Only transfer if you trust them.
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setTransferTarget(null)}
+                disabled={transferring}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={transfer}
+                disabled={transferring}
+                className="flex-1 bg-amber-500 hover:bg-amber-500/90 text-black"
+              >
+                {transferring && (
+                  <span className="mr-2 h-4 w-4 border-2 border-black/30 border-t-black rounded-full animate-spin inline-block" />
+                )}
+                Transfer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
