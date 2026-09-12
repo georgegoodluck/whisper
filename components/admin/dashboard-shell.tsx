@@ -1,16 +1,17 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { LogOut, Plus, MessageCircleQuestion } from 'lucide-react'
+import { LogOut, Plus, MessageCircleQuestion, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SpaceWorkspace } from './space-workspace'
 import { Logo } from '@/components/logo'
+import { DangerZone } from '@/components/account/danger-zone'
 
 type Membership = {
   space_id: string
@@ -34,9 +35,17 @@ export function DashboardShell({
 }) {
   const [memberships, setMemberships] = useState<Membership[]>(initial)
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(initial[0]?.space_id ?? null)
-  const [tab, setTab] = useState<'spaces' | 'create'>('spaces')
+  const [tab, setTab] = useState<'spaces' | 'create' | 'account'>('spaces')
   const supabase = createClient()
   const router = useRouter()
+
+  const ownedSpaces = useMemo(
+    () =>
+      memberships
+        .filter(m => m.role === 'overseer')
+        .map(m => ({ id: m.spaces.id, name: m.spaces.name, code: m.spaces.invite_code })),
+    [memberships]
+  )
 
   async function logout() {
     await supabase.auth.signOut()
@@ -47,7 +56,6 @@ export function DashboardShell({
   function handleSpaceDeleted(spaceId: string) {
     setMemberships(prev => {
       const next = prev.filter(m => m.space_id !== spaceId)
-      // If the deleted space was active, switch to the first remaining one (or null)
       setActiveSpaceId(prevActive =>
         prevActive === spaceId ? (next[0]?.space_id ?? null) : prevActive
       )
@@ -73,7 +81,7 @@ export function DashboardShell({
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-6xl">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'spaces' | 'create')}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
           <TabsList className="bg-secondary/50 border border-border/60">
             <TabsTrigger value="spaces">
               My spaces
@@ -83,6 +91,9 @@ export function DashboardShell({
             </TabsTrigger>
             <TabsTrigger value="create">
               <Plus className="h-3.5 w-3.5 mr-1" /> Create space
+            </TabsTrigger>
+            <TabsTrigger value="account">
+              <User className="h-3.5 w-3.5 mr-1" /> Account
             </TabsTrigger>
           </TabsList>
 
@@ -102,7 +113,6 @@ export function DashboardShell({
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Space selector */}
                 <div className="flex gap-2 flex-wrap">
                   {memberships.map(m => (
                     <button
@@ -150,11 +160,21 @@ export function DashboardShell({
               onCreated={(m) => {
                 setMemberships(prev => [...prev, m])
                 setActiveSpaceId(m.space_id)
-                setTab('spaces')           // ← auto-return to My spaces
+                setTab('spaces')
                 router.refresh()
               }}
               onCancel={() => setTab('spaces')}
             />
+          </TabsContent>
+
+          <TabsContent value="account" className="mt-6 space-y-6">
+            <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-6">
+              <h2 className="font-semibold mb-1">Account</h2>
+              <p className="text-sm text-muted-foreground">Signed in as</p>
+              <p className="font-mono text-sm mt-1">{user.email}</p>
+            </div>
+
+            <DangerZone ownedSpaces={ownedSpaces} />
           </TabsContent>
         </Tabs>
       </main>
