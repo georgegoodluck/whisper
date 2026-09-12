@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SpaceWorkspace } from './space-workspace'
+import { Logo } from '../logo'
 
 type Membership = {
   space_id: string
@@ -49,9 +50,7 @@ export function DashboardShell({
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-3.5 flex items-center justify-between max-w-6xl">
           <Link href="/" className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-500 flex items-center justify-center">
-              <MessageCircleQuestion className="h-5 w-5 text-white" />
-            </div>
+           <Logo size={36} />
             <div>
               <h1 className="text-sm font-semibold">Dashboard</h1>
               <p className="text-[11px] text-muted-foreground -mt-0.5">{user.email}</p>

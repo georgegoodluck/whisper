@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { ThemeToggle } from '@/components/theme-toggle'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { Logo } from './logo'
 
 export function Landing({ signedIn }: { signedIn: boolean }) {
   const [code, setCode] = useState('')
@@ -25,9 +26,7 @@ export function Landing({ signedIn }: { signedIn: boolean }) {
       <header className="border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-3.5 flex items-center justify-between max-w-3xl">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-500 flex items-center justify-center shadow-lg shadow-primary/20">
-              <MessageCircleQuestion className="h-5 w-5 text-white" />
-            </div>
+           <Logo size={36} />
             <div>
               <h1 className="text-base font-semibold tracking-tight">
                 {process.env.NEXT_PUBLIC_APP_NAME ?? 'Whisper'}
