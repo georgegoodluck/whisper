@@ -12,8 +12,20 @@ export const metadata: Metadata = {
   description: "Ask anything, anonymously. Get answers from admins.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.png",
+    icon: [
+      {
+        url: "/assets/favicon_io/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+      {
+        url: "/assets/favicon_io/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      { url: "/assets/favicon_io/favicon.ico" },
+    ],
+    apple: "/assets/favicon_io/apple-touch-icon.png",
   },
   openGraph: {
     images: ["/logo.png"],
