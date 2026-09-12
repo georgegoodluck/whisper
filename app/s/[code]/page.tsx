@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { createAdminClient } from '@/lib/supabase/server'
 import { SpaceBoard } from '@/components/space-board'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -9,22 +10,58 @@ import { Logo } from '@/components/logo'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SpacePage({
-  params,
-}: {
+interface Props {
   params: Promise<{ code: string }>
-}) {
-  const { code } = await params
-  const admin = await createAdminClient()
+}
 
-  const { data: space } = await admin
+async function getSpace(code: string) {
+  const admin = await createAdminClient()
+  const { data } = await admin
     .from('spaces')
-    .select('id, name, description, invite_code')
+    .select('id, name, description, invite_code, created_at')
     .eq('invite_code', code.toLowerCase())
     .maybeSingle()
+  return data
+}
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { code } = await params
+  const space = await getSpace(code)
+  if (!space) return { title: 'Space not found' }
+
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'Whisper'
+  const title = `${space.name} — Ask anonymously`
+  const description =
+    space.description ||
+    `Ask anything anonymously in ${space.name}. Answers come from admins.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      images: [{ url: '/og.png', width: 1200, height: 630, alt: space.name }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og.png'],
+    },
+    alternates: {
+      canonical: `/s/${space.invite_code}`,
+    },
+  }
+}
+
+export default async function SpacePage({ params }: Props) {
+  const { code } = await params
+  const space = await getSpace(code)
   if (!space) notFound()
 
+  const admin = await createAdminClient()
   const { data: questions } = await admin
     .from('questions')
     .select('*, answers(*)')
@@ -33,25 +70,23 @@ export default async function SpacePage({
     .order('created_at', { ascending: false })
     .limit(200)
 
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'Whisper'
-
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-3.5 flex items-center justify-between max-w-6xl">
           <Link href="/" className="flex items-center gap-3">
-           <Logo size={36} />
+            <Logo size={36} />
             <div>
               <h1 className="text-base font-semibold tracking-tight">{space.name}</h1>
               <p className="text-[11px] text-muted-foreground -mt-0.5">
-                {appName} · /s/{space.invite_code}
+                Anonymous Q&amp;A · /s/{space.invite_code}
               </p>
             </div>
           </Link>
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <Button asChild variant="ghost" size="icon" aria-label="Admin">
-              <Link href="/admin/login"><Shield className="h-5 w-5" /></Link>
+              <Link href="/admin/dashboard"><Shield className="h-5 w-5" /></Link>
             </Button>
           </div>
         </div>
