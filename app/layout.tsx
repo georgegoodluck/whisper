@@ -10,6 +10,14 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME ?? "Whisper",
   description: "Ask anything, anonymously. Get answers from admins.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.svg",
+    apple: "/logo.png",
+  },
+  openGraph: {
+    images: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({

@@ -12,30 +12,34 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const admin = await createAdminClient()
-
-  // Verify caller is whitelisted admin
-  const { data: isAdmin } = await admin
-    .from('admins').select('user_id').eq('user_id', user.id).maybeSingle()
-  if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  // Fetch display name (falls back to email prefix if missing)
-  const { data: profile } = await admin
-    .from('admin_profiles').select('display_name').eq('user_id', user.id).maybeSingle()
-  const adminName = profile?.display_name ?? user.email?.split('@')[0] ?? 'Admin'
-
   const json = await req.json().catch(() => null)
   const parsed = BodySchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
 
   const { questionId, content } = parsed.data
+  const admin = await createAdminClient()
+
+  // Verify the question exists and user is an admin of that space
+  const { data: question } = await admin
+    .from('questions').select('id, space_id').eq('id', questionId).maybeSingle()
+  if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+
+  const { data: member } = await admin
+    .from('space_members')
+    .select('display_name')
+    .eq('space_id', question.space_id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!member) return NextResponse.json({ error: 'Not an admin of this space' }, { status: 403 })
+
   const { data, error } = await supabase
     .from('answers')
     .insert({
       question_id: questionId,
-      content,
       admin_id: user.id,
-      admin_name: adminName,
+      admin_name: member.display_name,
+      content,
     })
     .select()
     .single()
