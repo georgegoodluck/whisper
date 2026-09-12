@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { getDeviceId } from '@/lib/device-id'
 
-export function AskDialog({ onCreated }: { onCreated?: (q: any) => void }) {
+export function AskDialog({ spaceId }: { spaceId: string }) {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -18,11 +18,10 @@ export function AskDialog({ onCreated }: { onCreated?: (q: any) => void }) {
       const res = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, deviceId: getDeviceId() }),
+        body: JSON.stringify({ spaceId, content, deviceId: getDeviceId() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to submit')
-      onCreated?.(data.question)
       setContent('')
       toast.success('Question posted anonymously')
     } catch (e: any) {
@@ -36,7 +35,7 @@ export function AskDialog({ onCreated }: { onCreated?: (q: any) => void }) {
     <form onSubmit={submit} className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-5 sm:p-6">
       <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
         <Lock className="h-3.5 w-3.5" />
-        Posted anonymously · Rate-limited for everyone&apos;s comfort
+        Posted anonymously · Rate-limited
       </div>
       <Textarea
         value={content}
