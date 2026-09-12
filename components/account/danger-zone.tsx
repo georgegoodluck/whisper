@@ -91,7 +91,7 @@ export function DangerZone({ ownedSpaces }: { ownedSpaces: OwnedSpace[] }) {
               <div>
                 <h3 className="font-semibold text-lg">Delete your account?</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  This removes your login, your space memberships, and all answers you've posted
+                  This removes your login, your space memberships, and all answers you&apos;ve posted
                   as an admin. <span className="font-medium text-foreground">This cannot be undone.</span>
                 </p>
               </div>
