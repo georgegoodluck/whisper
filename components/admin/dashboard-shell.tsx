@@ -147,6 +147,7 @@ export function DashboardShell({
                       key={m.space_id}
                       membership={m}
                       onDeleted={() => handleSpaceDeleted(m.space_id)}
+                      onLeft={() => handleSpaceDeleted(m.space_id)}
                     />
                   )
                 })()}

@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   Copy, Check, Users, KeyRound, Shield, MessageCircle, Clock,
-  CheckCircle2, Send, Plus, Trash2, Eye, EyeOff, ExternalLink, AlertTriangle,
+  CheckCircle2, Send, Plus, Trash2, Eye, EyeOff, ExternalLink,
+  AlertTriangle, LogOut,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -29,10 +30,11 @@ type Membership = {
 }
 
 export function SpaceWorkspace({
-  membership, onDeleted,
+  membership, onDeleted, onLeft,
 }: {
   membership: Membership
   onDeleted?: () => void
+  onLeft?: () => void
 }) {
   const space = membership.spaces
   const isOverseer = membership.role === 'overseer'
@@ -41,6 +43,8 @@ export function SpaceWorkspace({
   const [copied, setCopied] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
   // Load questions
@@ -121,6 +125,26 @@ export function SpaceWorkspace({
     }
   }
 
+  async function leaveSpace() {
+    setLeaving(true)
+    try {
+      const res = await fetch('/api/members', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spaceId: space.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success(`Left "${space.name}"`)
+      setConfirmLeave(false)
+      onLeft?.()
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setLeaving(false)
+    }
+  }
+
   const pending = questions.filter(q => !q.is_answered && !(q as any).is_hidden)
   const answered = questions.filter(q => q.is_answered && !(q as any).is_hidden)
   const hidden = questions.filter(q => (q as any).is_hidden)
@@ -153,7 +177,7 @@ export function SpaceWorkspace({
             >
               Open public page <ExternalLink className="h-3 w-3" />
             </Link>
-            {isOverseer && (
+            {isOverseer ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -161,6 +185,15 @@ export function SpaceWorkspace({
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmLeave(true)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4 mr-1.5" /> Leave
               </Button>
             )}
           </div>
@@ -262,7 +295,7 @@ export function SpaceWorkspace({
         )}
       </Tabs>
 
-      {/* Delete confirmation modal */}
+      {/* Delete space modal */}
       {confirmDelete && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
@@ -310,6 +343,57 @@ export function SpaceWorkspace({
                   <span className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
                 )}
                 Delete forever
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave space modal */}
+      {confirmLeave && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+          onClick={() => !leaving && setConfirmLeave(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                <LogOut className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Leave this space?</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You&apos;ll lose access to <span className="font-medium text-foreground">{space.name}</span> immediately.
+                  Your past answers stay published.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-secondary/40 border border-border/60 p-3 mb-5 text-xs text-muted-foreground">
+              The overseer can add you back anytime using your email.
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setConfirmLeave(false)}
+                disabled={leaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={leaveSpace}
+                disabled={leaving}
+                className="flex-1 bg-amber-500 hover:bg-amber-500/90 text-black"
+              >
+                {leaving && (
+                  <span className="mr-2 h-4 w-4 border-2 border-black/30 border-t-black rounded-full animate-spin inline-block" />
+                )}
+                Leave space
               </Button>
             </div>
           </div>
