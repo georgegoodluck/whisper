@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   Copy, Check, Users, KeyRound, Shield, MessageCircle, Clock,
-  CheckCircle2, Sparkles, Send, Plus, Trash2, Eye, EyeOff, ExternalLink,
+  CheckCircle2, Send, Plus, Trash2, Eye, EyeOff, ExternalLink, AlertTriangle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -28,12 +28,19 @@ type Membership = {
   }
 }
 
-export function SpaceWorkspace({ membership }: { membership: Membership }) {
+export function SpaceWorkspace({
+  membership, onDeleted,
+}: {
+  membership: Membership
+  onDeleted?: () => void
+}) {
   const space = membership.spaces
   const isOverseer = membership.role === 'overseer'
   const [questions, setQuestions] = useState<QuestionWithAnswer[]>([])
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
   // Load questions
@@ -98,6 +105,22 @@ export function SpaceWorkspace({ membership }: { membership: Membership }) {
     toast.success('Space link copied')
   }
 
+  async function deleteSpace() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/spaces/${space.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success(`Space "${data.deleted}" deleted`)
+      setConfirmDelete(false)
+      onDeleted?.()
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const pending = questions.filter(q => !q.is_answered && !(q as any).is_hidden)
   const answered = questions.filter(q => q.is_answered && !(q as any).is_hidden)
   const hidden = questions.filter(q => (q as any).is_hidden)
@@ -122,13 +145,25 @@ export function SpaceWorkspace({ membership }: { membership: Membership }) {
               <p className="text-sm text-muted-foreground max-w-lg">{space.description}</p>
             )}
           </div>
-          <Link
-            href={`/s/${space.invite_code}`}
-            target="_blank"
-            className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1"
-          >
-            Open public page <ExternalLink className="h-3 w-3" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/s/${space.invite_code}`}
+              target="_blank"
+              className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1"
+            >
+              Open public page <ExternalLink className="h-3 w-3" />
+            </Link>
+            {isOverseer && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDelete(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="mt-4 flex items-center gap-2 flex-wrap">
@@ -226,6 +261,60 @@ export function SpaceWorkspace({ membership }: { membership: Membership }) {
           </>
         )}
       </Tabs>
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+          onClick={() => !deleting && setConfirmDelete(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-destructive/40 bg-card p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Delete this space?</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <span className="font-medium text-foreground">{space.name}</span> and all its
+                  questions, answers, and admins will be permanently deleted. This cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-3 mb-5 text-xs text-muted-foreground">
+              <p className="font-mono">
+                {questions.length} question{questions.length === 1 ? '' : 's'} ·{' '}
+                {questions.filter(q => q.is_answered).length} answered
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={deleteSpace}
+                disabled={deleting}
+                className="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                {deleting && (
+                  <span className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                )}
+                Delete forever
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
