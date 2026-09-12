@@ -4,6 +4,7 @@ import { hashIp, getIp } from '@/lib/rate-limit'
 import { z } from 'zod'
 
 const BodySchema = z.object({
+  spaceId: z.string().uuid(),
   content: z.string().trim().min(3).max(1000),
   deviceId: z.string().min(8).max(64),
 })
@@ -15,10 +16,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
 
-  const { content, deviceId } = parsed.data
+  const { spaceId, content, deviceId } = parsed.data
   const ipHash = hashIp(getIp(req))
   const supabase = await createAdminClient()
 
+  // Verify the space exists
+  const { data: space } = await supabase
+    .from('spaces').select('id').eq('id', spaceId).maybeSingle()
+  if (!space) return NextResponse.json({ error: 'Space not found' }, { status: 404 })
+
+  // Rate limit per IP within this space
   const windowSec = Number(process.env.NEXT_PUBLIC_RATE_LIMIT_SECONDS ?? 30)
   const since = new Date(Date.now() - windowSec * 1000).toISOString()
 
@@ -26,6 +33,7 @@ export async function POST(req: Request) {
     .from('questions')
     .select('id')
     .eq('ip_hash', ipHash)
+    .eq('space_id', spaceId)
     .gte('created_at', since)
     .limit(1)
 
@@ -38,8 +46,8 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabase
     .from('questions')
-    .insert({ content, device_id: deviceId, ip_hash: ipHash })
-    .select('id, content, created_at, is_answered, device_id')
+    .insert({ space_id: spaceId, content, device_id: deviceId, ip_hash: ipHash })
+    .select('id, content, created_at, is_answered, device_id, space_id')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
