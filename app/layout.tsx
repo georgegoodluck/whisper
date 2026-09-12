@@ -1,18 +1,22 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { ThemeProvider } from '@/components/theme-provider'
-import { Toaster } from '@/components/ui/sonner'
-import { Analytics } from '@vercel/analytics/next'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/next";
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME ?? 'Whisper',
-  description: 'Ask anything, anonymously. Get answers from admins.',
-}
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? "Whisper",
+  description: "Ask anything, anonymously. Get answers from admins.",
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -23,5 +27,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
       </body>
     </html>
-  )
+  );
 }
