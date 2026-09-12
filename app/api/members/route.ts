@@ -13,6 +13,10 @@ const DeleteSchema = z.object({
   userId: z.string().uuid(),
 })
 
+const LeaveSchema = z.object({
+  spaceId: z.string().uuid(),
+})
+
 // ─── POST: overseer adds an existing user as admin of their space ───
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -31,7 +35,6 @@ export async function POST(req: Request) {
   const { spaceId, email, displayName } = parsed.data
   const admin = await createAdminClient()
 
-  // Caller must be the overseer
   const { data: space, error: spaceErr } = await admin
     .from('spaces')
     .select('id, owner_id, name')
@@ -44,7 +47,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Only the overseer can add admins' }, { status: 403 })
   }
 
-  // Find the target user by email
   const { data: list, error: listErr } = await admin.auth.admin.listUsers({ perPage: 1000 })
   if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 })
 
@@ -66,7 +68,6 @@ export async function POST(req: Request) {
     )
   }
 
-  // Insert into space_members
   const { error: insertErr } = await admin
     .from('space_members')
     .insert({
@@ -123,4 +124,62 @@ export async function DELETE(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
+}
+
+// ─── PATCH: current user leaves a space (must not be the overseer) ───
+export async function PATCH(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const json = await req.json().catch(() => null)
+  const parsed = LeaveSchema.safeParse(json)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+  }
+
+  const { spaceId } = parsed.data
+  const admin = await createAdminClient()
+
+  // Confirm the space exists and the caller isn't the owner
+  const { data: space, error: spaceErr } = await admin
+    .from('spaces')
+    .select('id, owner_id, name')
+    .eq('id', spaceId)
+    .maybeSingle()
+
+  if (spaceErr) return NextResponse.json({ error: spaceErr.message }, { status: 500 })
+  if (!space) return NextResponse.json({ error: 'Space not found' }, { status: 404 })
+
+  if (space.owner_id === user.id) {
+    return NextResponse.json(
+      {
+        error:
+          "You're the overseer — you can't leave. Delete the space or hand it off first.",
+      },
+      { status: 403 }
+    )
+  }
+
+  // Confirm the caller is actually a member
+  const { data: member } = await admin
+    .from('space_members')
+    .select('user_id, role')
+    .eq('space_id', spaceId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!member) {
+    return NextResponse.json({ error: "You're not a member of this space" }, { status: 404 })
+  }
+
+  const { error: delErr } = await admin
+    .from('space_members')
+    .delete()
+    .eq('space_id', spaceId)
+    .eq('user_id', user.id)
+
+  if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true, space: space.name })
 }
